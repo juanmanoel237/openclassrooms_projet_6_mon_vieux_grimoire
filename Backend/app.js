@@ -5,6 +5,8 @@ const bodyParser = require('body-parser');
 
 const app = express();
 
+const Book = require('./models/Book')
+
 // Charger les variables d'environnement à partir de .env
 dotenv.config();
 // Utiliser la variable d'environnement pour la connexion MongoDB
@@ -24,5 +26,12 @@ app.use((req, res, next) => {
 });
 
 app.use(bodyParser.json())
+
+app.post('/api/books', (res,req,next)=>{
+    delete req.body._id;
+    const book = new Book({
+        ...req.body
+    })
+})
 
 module.exports = app;

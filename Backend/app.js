@@ -3,16 +3,16 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
 
-const app = express();
+const booksRoutes = require('./routes/books');
 
-const Book = require('./models/Book')
+const app = express();
 
 // Charger les variables d'environnement à partir de .env
 dotenv.config();
 // Utiliser la variable d'environnement pour la connexion MongoDB
 const uri = process.env.MONGODB_URI;
 
-mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(uri)
   .then(() => console.log('Connexion à MongoDB réussie !'))
   .catch((err) => console.log('Connexion à MongoDB échouée !', err));
 
@@ -27,11 +27,7 @@ app.use((req, res, next) => {
 
 app.use(bodyParser.json())
 
-app.post('/api/books', (res,req,next)=>{
-    delete req.body._id;
-    const book = new Book({
-        ...req.body
-    })
-})
+app.use('/api/books', booksRoutes)
+
 
 module.exports = app;

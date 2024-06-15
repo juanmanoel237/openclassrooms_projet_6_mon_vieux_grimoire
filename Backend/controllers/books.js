@@ -33,3 +33,40 @@ exports.getOneBook = (req, res, next)=>{
     .then((book)=>res.status(200).json(book))
     .catch((error)=>res.status(404).json({error}))
 }
+
+exports.getAllBooks = (req, res, next)=>{
+    Book.find()
+    .then((books)=>res.status(200).json(books))
+    .catch((error)=>res.status(400).json({error}))
+}
+
+exports.upDateBook = (req, res, next)=>{
+    const book = new Book({
+        _id: req.params.id,
+        title: req.body.title,
+        description: req.body.description,
+        imageUrl: req.body.imageUrl,
+        price: req.body.price 
+    })
+    Book.updateOne({_id: req.params.id}, book)
+    .then(()=>{
+        res.status(201).json({message:'Book updated successfully'})
+    })
+    .catch((error)=>{res.status(400).json({error:error})})
+}
+
+exports.deleteBook = (req, res, next)=>{
+    Book.deleteOne({_id: req.params.id}).then(
+        () => {
+          res.status(200).json({
+            message: 'Deleted!'
+          });
+        }
+      ).catch(
+        (error) => {
+          res.status(400).json({
+            error: error
+          });
+        }
+     );
+}

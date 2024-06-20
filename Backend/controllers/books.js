@@ -1,21 +1,28 @@
 const Book = require("../models/Book");
 const mongoSanitize = require('mongo-sanitize');
+const fs = require('fs')
 
 // Fonction pour créer un livre
 exports.createBook = (req, res, next) => {
-    // Assainir les données entrantes
-    const sanitizedBody = {
-        title: mongoSanitize(req.body.title),
-        description: mongoSanitize(req.body.description),
-        imageUrl: mongoSanitize(req.body.imageUrl),
-        userId: mongoSanitize(req.body.userId),
-        price: mongoSanitize(req.body.price),
-    };
+    if (!req.body.book) {
+        return res.status(400).json({ error: 'Book data is missing' });
+    }
 
-    // Créer une nouvelle instance de Book avec les données assainies
-    const book = new Book(sanitizedBody);
+    // Vérifier l'objet fichier
+    if (!req.file || !req.file.filename) {
+        return res.status(400).json({ error: 'File upload is missing or invalid' });
+    }
 
-    // Sauvegarder le livre dans la base de données
+    const bookObject = JSON.parse(req.body.book);
+    delete bookObject._id;
+    delete bookObject._userId;
+
+    const book = new Book({
+        ...bookObject,
+        userId: req.auth.userId,
+        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
+    });
+
     book.save()
         .then(() => {
             res.status(201).json({ message: 'Livre enregistré avec succès !' });
@@ -26,13 +33,12 @@ exports.createBook = (req, res, next) => {
         });
 };
 
-exports.getOneBook = (req, res, next)=>{
-    Book.findOne({
-        _id: req.params.id
-    })
-    .then((book)=>res.status(200).json(book))
-    .catch((error)=>res.status(404).json({error}))
-}
+
+exports.getOneBook = (req, res, next) => {
+    Book.findOne({ _id: req.params.id })
+      .then((book) => res.status(200).json(book))
+      .catch((error) => res.status(404).json({ error }));
+  };
 
 exports.getAllBooks = (req, res, next)=>{
     Book.find()

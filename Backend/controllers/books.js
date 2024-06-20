@@ -67,15 +67,35 @@ exports.upDateBook = (req, res, next)=>{
 };
 
 // Fonction pour supprimer un livre
-exports.deleteBook = (req, res, next)=>{
-    Book.deleteOne({_id: req.params.id}) // Supprime le livre par ID
-      .then(() => {
-          res.status(200).json({ message: 'Deleted!' }); // Réponse en cas de succès
+exports.deleteBook = (req, res, next) => {
+    // Trouver le livre à supprimer en utilisant l'ID dans les paramètres de la requête
+    Book.findOne({ _id: req.params.id })
+      .then((book) => {
+        // Vérifier si l'utilisateur qui demande la suppression est bien celui qui a créé le livre
+        if (book.userId != req.auth.userId) {
+          // Si l'utilisateur n'est pas autorisé, renvoyer une réponse avec un statut 403
+          res.status(403).json({ message: "403: unauthorized request" });
+        } else {
+          // Extraire le nom du fichier de l'URL de l'image du livre
+          const filename = book.imageUrl.split("/images/")[1];
+          // Supprimer le fichier image associé au livre du système de fichiers
+          fs.unlink(`images/${filename}`, () => {
+            // Supprimer le document livre de la base de données
+            Book.deleteOne({ _id: req.params.id })
+              .then(() => {
+                // Renvoyer une réponse de succès si la suppression a réussi
+                res.status(200).json({ message: "Objet supprimé !" });
+              })
+              .catch((error) => res.status(400).json({ error }));
+          });
+        }
       })
       .catch((error) => {
-          res.status(400).json({ error }); // Réponse en cas d'erreur
+        // Renvoyer une réponse d'erreur si le livre n'a pas été trouvé
+        res.status(404).json({ error });
       });
 };
+
 
 // Fonction pour ajouter une notation à un livre
 exports.createRating = async (req, res) => {

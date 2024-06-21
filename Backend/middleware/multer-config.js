@@ -1,25 +1,71 @@
-const multer = require('multer'); // Importation de multer pour la gestion des fichiers
+const multer = require("multer");
+const sharp = require("sharp");
 
-// Définition des types MIME pour les images
-const MIME_TYPE = {
-    'image/jpg' : 'jpg',
-    'image/jpeg': 'jpg',
-    'image/png': 'png'
-};
+// Modules natifs Node.js pour gérer les fichiers et les chemins de fichiers
+const path = require("path");
+const fs = require("fs");
 
-// Configuration du stockage des fichiers avec multer
+// Configuration de Multer pour le stockage des fichiers
 const storage = multer.diskStorage({
-    // Définir le dossier de destination des fichiers
-    destination: (req, file, callback) => {
-        callback(null, 'images'); // Dossier 'images' pour le stockage
-    },
-    // Définir le nom de fichier pour éviter les conflits
-    filename: (req, file, callback) => {
-        const name = file.originalname.split(' ').join('_'); // Remplacer les espaces par des underscores
-        const extension = MIME_TYPE[file.mimetype]; // Obtenir l'extension du fichier à partir de son type MIME
-        callback(null, name + Date.now() + '.' + extension); // Ajouter un timestamp pour garantir l'unicité du nom
-    }
+  // Définir le dossier de destination des fichiers
+  destination: (req, file, callback) => {
+    callback(null, "images"); // Enregistrement des fichiers dans le dossier images
+  },
+
+  // Générer un nom de fichier unique pour éviter les conflits
+  filename: (req, file, callback) => {
+    const name = file.originalname.slice(0, 3); // Utiliser les 3 premiers caractères du nom original
+    callback(null, name + Date.now() + ".webp"); // Ajouter un timestamp et utiliser l'extension .webp
+  },
+
+  // Vérification du type MIME du fichier pour autoriser uniquement les images
+  fileFilter: (req, file, callback) => {
+    !file.originalname.match(/\.(jpg|jpeg|png|webp)$/)
+      ? callback(
+          new Error("Seuls les fichiers JPG, JPEG et PNG sont autorisés !"), // Message d'erreur pour les types non autorisés
+          false
+        )
+      : callback(null, true); // Fichier valide
+  },
 });
 
-// Exporter la configuration de multer en spécifiant que l'on gère des fichiers uniques avec le champ 'image'
-module.exports = multer({ storage: storage }).single('image');
+// Création du dossier images s'il n'existe pas
+if (!fs.existsSync("images")) {
+  fs.mkdirSync("images"); // Crée le dossier images
+}
+
+// Middleware pour gérer le téléchargement de fichiers avec Multer
+module.exports = multer({ storage: storage }).single("image");
+
+// Middleware pour optimiser l'image téléchargée avec Sharp
+module.exports.optimizeImage = (req, res, next) => {
+  // Vérifier si un fichier a été téléchargé
+  if (!req.file) {
+    return next(); // Si aucun fichier, passer au middleware suivant
+  }
+
+  const filePath = req.file.path; // Chemin du fichier original
+  const fileName = req.file.filename; // Nom du fichier original
+  const outputFilePath = path.join("images", `resized_${fileName}`); // Chemin du fichier optimisé
+
+  // Désactivation du cache de Sharp
+  sharp.cache(false);
+
+  // Redimensionner l'image avec Sharp
+  sharp(filePath)
+    .resize({ height: 600 }) // Redimensionner à une hauteur de 600 pixels
+    .toFile(outputFilePath) // Enregistrer le fichier redimensionné
+    .then(() => {
+      console.log(`Image ${fileName} optimisée avec succès !`); // Log de succès
+      // Supprimer le fichier original et mettre à jour le chemin dans la requête
+      fs.unlink(filePath, () => {
+        req.file.path = outputFilePath; // Mettre à jour le chemin du fichier dans la requête
+        console.log(`Image ${fileName} supprimée avec succès !`); // Log de suppression
+        next(); // Passer au middleware suivant
+      });
+    })
+    .catch((err) => {
+      console.log(err); // Log de l'erreur
+      return next(); // Passer l'erreur au middleware suivant
+    });
+};

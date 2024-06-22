@@ -20,12 +20,11 @@ const storage = multer.diskStorage({
 
   // Vérification du type MIME du fichier pour autoriser uniquement les images
   fileFilter: (req, file, callback) => {
-    !file.originalname.match(/\.(jpg|jpeg|png|webp)$/)
-      ? callback(
-          new Error("Seuls les fichiers JPG, JPEG et PNG sont autorisés !"), // Message d'erreur pour les types non autorisés
-          false
-        )
-      : callback(null, true); // Fichier valide
+    if (!file.originalname.match(/\.(jpg|jpeg|png|webp)$/)) {
+      callback(new Error("Seuls les fichiers JPG, JPEG et PNG sont autorisés !"), false);
+    } else {
+      callback(null, true);
+    }
   },
 });
 
@@ -53,7 +52,7 @@ module.exports.optimizeImage = (req, res, next) => {
 
   // Redimensionner l'image avec Sharp
   sharp(filePath)
-    .resize({ height: 600 }) // Redimensionner à une hauteur de 600 pixels
+    .resize({ width: 500, height: 500 }) // Redimensionner à une largeur de 500 pixels et une hauteur de 600 pixels
     .toFile(outputFilePath) // Enregistrer le fichier redimensionné
     .then(() => {
       console.log(`Image ${fileName} optimisée avec succès !`); // Log de succès
